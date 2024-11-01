@@ -1,5 +1,6 @@
 streamlit
 numpy
 pandas
-reportlab
+reportlab==4.0.7
 numpy-financial
+xlsxwriter
