@@ -238,7 +238,10 @@ def calculate_metrics():
     total_incentives = (res_incentives * res_sites) + (com_incentives * com_sites)
     
     # Cash flows
-    net_cash_flows = -total_capex + total_incentives + res_revenue + com_revenue - res_opex - com_opex
+    net_cash_flows = np.zeros(project_years + 1)
+    net_cash_flows[0] = -total_capex + total_incentives  # Initial year: investment and incentives
+    for year in range(1, project_years + 1):
+        net_cash_flows[year] = res_revenue[year] + com_revenue[year] - res_opex[year] - com_opex[year]
     
     # Calculate metrics
     npv = calculate_npv(discount_rate, net_cash_flows)
