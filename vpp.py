@@ -1,11 +1,11 @@
 import streamlit as st
 import numpy as np
 import pandas as pd
-# from reportlab.lib import colors
-# from reportlab.lib.pagesizes import letter
-# from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-# from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
-# from reportlab.lib.units import inch
+from reportlab.lib import colors
+from reportlab.lib.pagesizes import letter
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
+from reportlab.lib.units import inch
 import base64
 from io import BytesIO
 from datetime import datetime
@@ -285,115 +285,115 @@ def calculate_metrics():
     }
 
 # Add these functions BEFORE "with tab_results:"
-# def create_pdf_report(metrics, cash_flow_df):
-#     buffer = BytesIO()
-#     doc = SimpleDocTemplate(buffer, pagesize=letter)
-#     styles = getSampleStyleSheet()
-#     story = []
+def create_pdf_report(metrics, cash_flow_df):
+    buffer = BytesIO()
+    doc = SimpleDocTemplate(buffer, pagesize=letter)
+    styles = getSampleStyleSheet()
+    story = []
     
-#     # Title
-#     title_style = ParagraphStyle(
-#         'CustomTitle',
-#         parent=styles['Heading1'],
-#         fontSize=16,
-#         spaceAfter=30
-#     )
-#     story.append(Paragraph('VPP Business Model Analysis Report', title_style))
-#     story.append(Paragraph(f'Generated on: {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}', styles['Normal']))
-#     story.append(Spacer(1, 20))
+    # Title
+    title_style = ParagraphStyle(
+        'CustomTitle',
+        parent=styles['Heading1'],
+        fontSize=16,
+        spaceAfter=30
+    )
+    story.append(Paragraph('VPP Business Model Analysis Report', title_style))
+    story.append(Paragraph(f'Generated on: {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}', styles['Normal']))
+    story.append(Spacer(1, 20))
     
-#     # Key Metrics Section
-#     story.append(Paragraph('Key Financial Metrics', styles['Heading2']))
-#     story.append(Spacer(1, 10))
+    # Key Metrics Section
+    story.append(Paragraph('Key Financial Metrics', styles['Heading2']))
+    story.append(Spacer(1, 10))
     
-#     # Core Metrics
-#     story.append(Paragraph('Core Metrics', styles['Heading3']))
-#     core_metrics = [
-#         f'Net Present Value: ${metrics["npv"]:,.2f}',
-#         f'Internal Rate of Return: {metrics["irr"]*100:.2f}%' if metrics["irr"] else "IRR: N/A",
-#         f'Payback Period: {metrics["payback"]:.1f} years' if metrics["payback"] else "Payback: N/A",
-#         f'Return on Investment: {metrics["roi"]:.2f}%',
-#         f'Total CapEx: ${metrics["total_capex"]:,.2f}',
-#         f'Annual Revenue (Year 1): ${metrics["annual_revenue"]:,.2f}'
-#     ]
+    # Core Metrics
+    story.append(Paragraph('Core Metrics', styles['Heading3']))
+    core_metrics = [
+        f'Net Present Value: ${metrics["npv"]:,.2f}',
+        f'Internal Rate of Return: {metrics["irr"]*100:.2f}%' if metrics["irr"] else "IRR: N/A",
+        f'Payback Period: {metrics["payback"]:.1f} years' if metrics["payback"] else "Payback: N/A",
+        f'Return on Investment: {metrics["roi"]:.2f}%',
+        f'Total CapEx: ${metrics["total_capex"]:,.2f}',
+        f'Annual Revenue (Year 1): ${metrics["annual_revenue"]:,.2f}'
+    ]
     
-#     for metric in core_metrics:
-#         story.append(Paragraph(metric, styles['Normal']))
-#     story.append(Spacer(1, 10))
+    for metric in core_metrics:
+        story.append(Paragraph(metric, styles['Normal']))
+    story.append(Spacer(1, 10))
     
-#     # Operating Metrics
-#     story.append(Paragraph('Operating Metrics', styles['Heading3']))
-#     operating_metrics = [
-#         f'EBITDA (Year 1): ${metrics["ebitda"]:,.2f}',
-#         f'Gross Margin: {metrics["gross_margin"]:.1f}%',
-#         f'LCOE: ${metrics["lcoe"]:.4f}/kWh' if metrics["lcoe"] else "LCOE: N/A"
-#     ]
+    # Operating Metrics
+    story.append(Paragraph('Operating Metrics', styles['Heading3']))
+    operating_metrics = [
+        f'EBITDA (Year 1): ${metrics["ebitda"]:,.2f}',
+        f'Gross Margin: {metrics["gross_margin"]:.1f}%',
+        f'LCOE: ${metrics["lcoe"]:.4f}/kWh' if metrics["lcoe"] else "LCOE: N/A"
+    ]
     
-#     for metric in operating_metrics:
-#         story.append(Paragraph(metric, styles['Normal']))
-#     story.append(Spacer(1, 10))
+    for metric in operating_metrics:
+        story.append(Paragraph(metric, styles['Normal']))
+    story.append(Spacer(1, 10))
     
-#     # Cash Flow Table
-#     story.append(Paragraph('Cash Flow Summary', styles['Heading2']))
-#     story.append(Spacer(1, 10))
+    # Cash Flow Table
+    story.append(Paragraph('Cash Flow Summary', styles['Heading2']))
+    story.append(Spacer(1, 10))
     
-#     # Create table data
-#     table_data = [['Year', 'Net Cash Flow', 'Cumulative Cash Flow']]
-#     for _, row in cash_flow_df[['Year', 'Net Cash Flow', 'Cumulative Cash Flow']].iterrows():
-#         table_data.append([
-#             str(row['Year']),
-#             f'${row["Net Cash Flow"]:,.2f}',
-#             f'${row["Cumulative Cash Flow"]:,.2f}'
-#         ])
+    # Create table data
+    table_data = [['Year', 'Net Cash Flow', 'Cumulative Cash Flow']]
+    for _, row in cash_flow_df[['Year', 'Net Cash Flow', 'Cumulative Cash Flow']].iterrows():
+        table_data.append([
+            str(row['Year']),
+            f'${row["Net Cash Flow"]:,.2f}',
+            f'${row["Cumulative Cash Flow"]:,.2f}'
+        ])
     
-#     table = Table(table_data)
-#     table.setStyle(TableStyle([
-#         ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
-#         ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
-#         ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-#         ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-#         ('FONTSIZE', (0, 0), (-1, 0), 12),
-#         ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
-#         ('BACKGROUND', (0, 1), (-1, -1), colors.white),
-#         ('TEXTCOLOR', (0, 1), (-1, -1), colors.black),
-#         ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
-#         ('FONTSIZE', (0, 1), (-1, -1), 10),
-#         ('GRID', (0, 0), (-1, -1), 1, colors.black),
-#         ('ALIGN', (1, 1), (-1, -1), 'RIGHT'),
-#     ]))
+    table = Table(table_data)
+    table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('FONTSIZE', (0, 0), (-1, 0), 12),
+        ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+        ('BACKGROUND', (0, 1), (-1, -1), colors.white),
+        ('TEXTCOLOR', (0, 1), (-1, -1), colors.black),
+        ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
+        ('FONTSIZE', (0, 1), (-1, -1), 10),
+        ('GRID', (0, 0), (-1, -1), 1, colors.black),
+        ('ALIGN', (1, 1), (-1, -1), 'RIGHT'),
+    ]))
     
-#     story.append(table)
+    story.append(table)
     
-#     # Build PDF
-#     doc.build(story)
-#     return buffer.getvalue()
+    # Build PDF
+    doc.build(story)
+    return buffer.getvalue()
 
-# def create_excel_export(metrics, cash_flow_df):
-#     output = BytesIO()
-#     with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
-#         cash_flow_df.to_excel(writer, sheet_name='Cash Flows', index=False)
+def create_excel_export(metrics, cash_flow_df):
+    output = BytesIO()
+    with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
+        cash_flow_df.to_excel(writer, sheet_name='Cash Flows', index=False)
         
-#         # Create metrics summary
-#         metrics_df = pd.DataFrame({
-#             'Metric': ['NPV', 'IRR', 'Payback Period', 'ROI', 'Total CapEx', 'Annual Revenue'],
-#             'Value': [
-#                 f'${metrics["npv"]:,.2f}',
-#                 f'{metrics["irr"]*100:.2f}%' if metrics["irr"] else "N/A",
-#                 f'{metrics["payback"]:.1f} years' if metrics["payback"] else "N/A",
-#                 f'{metrics["roi"]:.2f}%',
-#                 f'${metrics["total_capex"]:,.2f}',
-#                 f'${metrics["annual_revenue"]:,.2f}'
-#             ]
-#         })
-#         metrics_df.to_excel(writer, sheet_name='Key Metrics', index=False)
+        # Create metrics summary
+        metrics_df = pd.DataFrame({
+            'Metric': ['NPV', 'IRR', 'Payback Period', 'ROI', 'Total CapEx', 'Annual Revenue'],
+            'Value': [
+                f'${metrics["npv"]:,.2f}',
+                f'{metrics["irr"]*100:.2f}%' if metrics["irr"] else "N/A",
+                f'{metrics["payback"]:.1f} years' if metrics["payback"] else "N/A",
+                f'{metrics["roi"]:.2f}%',
+                f'${metrics["total_capex"]:,.2f}',
+                f'${metrics["annual_revenue"]:,.2f}'
+            ]
+        })
+        metrics_df.to_excel(writer, sheet_name='Key Metrics', index=False)
         
-#         # Format Excel
-#         workbook = writer.book
-#         worksheet = writer.sheets['Cash Flows']
-#         money_fmt = workbook.add_format({'num_format': '$#,##0.00'})
-#         worksheet.set_column('E:F', 15, money_fmt)
+        # Format Excel
+        workbook = writer.book
+        worksheet = writer.sheets['Cash Flows']
+        money_fmt = workbook.add_format({'num_format': '$#,##0.00'})
+        worksheet.set_column('E:F', 15, money_fmt)
         
-#     return output.getvalue()
+    return output.getvalue()
 
 # Then the Results tab code follows
 with tab_results:
@@ -507,24 +507,25 @@ with tab_results:
         st.metric("Debt Service Coverage", f"{metrics['debt_service_coverage']:.2f}x",
                  help="EBITDA / Annual Debt Payment - measures ability to service debt")
     
-    # # Export section
-    # st.header("Export Options")
-    # col1, col2 = st.columns(2)
+    # Export section
+    st.header("Export Options")
+    col1, col2 = st.columns(2)
     
-    # with col1:
-    #     pdf_file = create_pdf_report(metrics, cash_flow_df)
-    #     st.download_button(
-    #         label="Download PDF Report",
-    #         data=pdf_file,
-    #         file_name="vpp_business_model_report.pdf",
-    #         mime="application/pdf"
-    #     )
+    with col1:
+        pdf_file = create_pdf_report(metrics, cash_flow_df)
+        st.download_button(
+            label="Download PDF Report",
+            data=pdf_file,
+            file_name="vpp_business_model_report.pdf",
+            mime="application/pdf"
+        )
     
-    # with col2:
-    #     excel_file = create_excel_export(metrics, cash_flow_df)
-    #     st.download_button(
-    #         label="Download Excel Model",
-    #         data=excel_file,
-    #         file_name="vpp_business_model.xlsx",
-    #         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-    #     )
+    with col2:
+        excel_file = create_excel_export(metrics, cash_flow_df)
+        st.download_button(
+            label="Download Excel Model",
+            data=excel_file,
+            file_name="vpp_business_model.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        )
+    

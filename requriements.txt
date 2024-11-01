@@ -1,6 +1,0 @@
-streamlit
-numpy
-pandas
-reportlab==4.0.7
-numpy_financial
-xlsxwriter
