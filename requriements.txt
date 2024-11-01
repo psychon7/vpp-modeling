@@ -1,5 +1,5 @@
-streamlit==1.31.0
-numpy==1.26.0
-pandas==2.2.0
-fpdf==2.7.1
-numpy-financial==1.0.0
+streamlit
+numpy
+pandas
+fpdf
+numpy-financial
