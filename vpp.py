@@ -1,7 +1,11 @@
 import streamlit as st
 import numpy as np
 import pandas as pd
-from fpdf import FPDF
+from reportlab.lib import colors
+from reportlab.lib.pagesizes import letter
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
+from reportlab.lib.units import inch
 import base64
 from io import BytesIO
 from datetime import datetime
@@ -282,27 +286,28 @@ def calculate_metrics():
 
 # Add these functions BEFORE "with tab_results:"
 def create_pdf_report(metrics, cash_flow_df):
-    pdf = FPDF()
-    pdf.add_page()
+    buffer = BytesIO()
+    doc = SimpleDocTemplate(buffer, pagesize=letter)
+    styles = getSampleStyleSheet()
+    story = []
     
-    # Title and date
-    pdf.set_font('Arial', 'B', 16)
-    pdf.cell(0, 10, 'VPP Business Model Analysis Report', ln=True, align='C')
-    pdf.ln(10)
+    # Title
+    title_style = ParagraphStyle(
+        'CustomTitle',
+        parent=styles['Heading1'],
+        fontSize=16,
+        spaceAfter=30
+    )
+    story.append(Paragraph('VPP Business Model Analysis Report', title_style))
+    story.append(Paragraph(f'Generated on: {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}', styles['Normal']))
+    story.append(Spacer(1, 20))
     
-    pdf.set_font('Arial', '', 10)
-    pdf.cell(0, 10, f'Generated on: {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}', ln=True)
-    pdf.ln(10)
+    # Key Metrics Section
+    story.append(Paragraph('Key Financial Metrics', styles['Heading2']))
+    story.append(Spacer(1, 10))
     
-    # Key metrics section
-    pdf.set_font('Arial', 'B', 14)
-    pdf.cell(0, 10, 'Key Financial Metrics', ln=True)
-    pdf.ln(5)
-    
-    # Core financial metrics
-    pdf.set_font('Arial', 'B', 12)
-    pdf.cell(0, 8, 'Core Metrics', ln=True)
-    pdf.set_font('Arial', '', 12)
+    # Core Metrics
+    story.append(Paragraph('Core Metrics', styles['Heading3']))
     core_metrics = [
         f'Net Present Value: ${metrics["npv"]:,.2f}',
         f'Internal Rate of Return: {metrics["irr"]*100:.2f}%' if metrics["irr"] else "IRR: N/A",
@@ -313,13 +318,11 @@ def create_pdf_report(metrics, cash_flow_df):
     ]
     
     for metric in core_metrics:
-        pdf.cell(0, 8, metric, ln=True)
-    pdf.ln(5)
+        story.append(Paragraph(metric, styles['Normal']))
+    story.append(Spacer(1, 10))
     
-    # Operating metrics
-    pdf.set_font('Arial', 'B', 12)
-    pdf.cell(0, 8, 'Operating Metrics', ln=True)
-    pdf.set_font('Arial', '', 12)
+    # Operating Metrics
+    story.append(Paragraph('Operating Metrics', styles['Heading3']))
     operating_metrics = [
         f'EBITDA (Year 1): ${metrics["ebitda"]:,.2f}',
         f'Gross Margin: {metrics["gross_margin"]:.1f}%',
@@ -327,69 +330,43 @@ def create_pdf_report(metrics, cash_flow_df):
     ]
     
     for metric in operating_metrics:
-        pdf.cell(0, 8, metric, ln=True)
-    pdf.ln(5)
-    
-    # Financing metrics
-    pdf.set_font('Arial', 'B', 12)
-    pdf.cell(0, 8, 'Financing Metrics', ln=True)
-    pdf.set_font('Arial', '', 12)
-    financing_metrics = [
-        f'Equity Investment: ${metrics["equity_investment"]:,.2f}',
-        f'Loan Amount: ${metrics["loan_amount"]:,.2f}',
-        f'Annual Debt Payment: ${metrics["annual_debt_payment"]:,.2f}',
-        f'Debt Service Coverage: {metrics["debt_service_coverage"]:.2f}x'
-    ]
-    
-    for metric in financing_metrics:
-        pdf.cell(0, 8, metric, ln=True)
-    pdf.ln(10)
+        story.append(Paragraph(metric, styles['Normal']))
+    story.append(Spacer(1, 10))
     
     # Cash Flow Table
-    pdf.set_font('Arial', 'B', 14)
-    pdf.cell(0, 10, 'Cash Flow Summary', ln=True)
-    pdf.ln(5)
+    story.append(Paragraph('Cash Flow Summary', styles['Heading2']))
+    story.append(Spacer(1, 10))
     
-    # Convert DataFrame to table
-    pdf.set_font('Arial', '', 8)
-    cols = ['Year', 'Net Cash Flow', 'Cumulative Cash Flow']
+    # Create table data
+    table_data = [['Year', 'Net Cash Flow', 'Cumulative Cash Flow']]
+    for _, row in cash_flow_df[['Year', 'Net Cash Flow', 'Cumulative Cash Flow']].iterrows():
+        table_data.append([
+            str(row['Year']),
+            f'${row["Net Cash Flow"]:,.2f}',
+            f'${row["Cumulative Cash Flow"]:,.2f}'
+        ])
     
-    # Table header
-    for col in cols:
-        pdf.cell(60, 7, col, 1)
-    pdf.ln()
+    table = Table(table_data)
+    table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('FONTSIZE', (0, 0), (-1, 0), 12),
+        ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+        ('BACKGROUND', (0, 1), (-1, -1), colors.white),
+        ('TEXTCOLOR', (0, 1), (-1, -1), colors.black),
+        ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
+        ('FONTSIZE', (0, 1), (-1, -1), 10),
+        ('GRID', (0, 0), (-1, -1), 1, colors.black),
+        ('ALIGN', (1, 1), (-1, -1), 'RIGHT'),
+    ]))
     
-    # Table data
-    for _, row in cash_flow_df[cols].iterrows():
-        pdf.cell(60, 7, str(row['Year']), 1)
-        pdf.cell(60, 7, f'${row["Net Cash Flow"]:,.2f}', 1)
-        pdf.cell(60, 7, f'${row["Cumulative Cash Flow"]:,.2f}', 1)
-        pdf.ln()
+    story.append(table)
     
-    # Add assumptions section
-    pdf.add_page()
-    pdf.set_font('Arial', 'B', 14)
-    pdf.cell(0, 10, 'Key Assumptions', ln=True)
-    pdf.ln(5)
-    
-    pdf.set_font('Arial', 'B', 12)
-    pdf.cell(0, 8, 'Project Parameters', ln=True)
-    pdf.set_font('Arial', '', 10)
-    assumptions = [
-        f'Project Lifespan: {project_years} years',
-        f'Discount Rate: {discount_rate*100:.1f}%',
-        f'Inflation Rate: {inflation_rate*100:.1f}%',
-        f'Battery Degradation: {degradation_rate*100:.1f}%/year',
-        f'Round-trip Efficiency: {efficiency*100:.1f}%',
-        f'Debt Ratio: {debt_ratio*100:.1f}%',
-        f'Loan Interest Rate: {loan_interest*100:.1f}%',
-        f'Loan Term: {loan_term} years'
-    ]
-    
-    for assumption in assumptions:
-        pdf.cell(0, 6, assumption, ln=True)
-    
-    return pdf
+    # Build PDF
+    doc.build(story)
+    return buffer.getvalue()
 
 def create_excel_export(metrics, cash_flow_df):
     output = BytesIO()
@@ -535,8 +512,7 @@ with tab_results:
     col1, col2 = st.columns(2)
     
     with col1:
-        pdf = create_pdf_report(metrics, cash_flow_df)
-        pdf_file = pdf.output(dest='S').encode('latin-1')
+        pdf_file = create_pdf_report(metrics, cash_flow_df)
         st.download_button(
             label="Download PDF Report",
             data=pdf_file,
