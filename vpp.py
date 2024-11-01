@@ -93,12 +93,21 @@ with st.sidebar:
                                help="Percentage of energy retained through charge-discharge cycle") / 100
     
     st.subheader("Debt Financing")
-    debt_ratio = st.number_input("Debt Ratio (%)", value=70.0,
-                                help="Percentage of project financed through debt") / 100
-    loan_interest = st.number_input("Loan Interest Rate (%)", value=5.0,
-                                  help="Annual interest rate on the loan") / 100
-    loan_term = st.number_input("Loan Term (years)", value=7, min_value=1, max_value=20,
-                               help="Duration of the loan repayment period")
+    enable_debt = st.toggle("Enable Debt Financing", value=False,
+                          help="Toggle debt financing calculations on/off")
+    
+    # Only show debt inputs if debt financing is enabled
+    if enable_debt:
+        debt_ratio = st.number_input("Debt Ratio (%)", value=70.0,
+                                    help="Percentage of project financed through debt") / 100
+        loan_interest = st.number_input("Loan Interest Rate (%)", value=5.0,
+                                      help="Annual interest rate on the loan") / 100
+        loan_term = st.number_input("Loan Term (years)", value=7, min_value=1, max_value=20,
+                                   help="Duration of the loan repayment period")
+    else:
+        debt_ratio = 0.0
+        loan_interest = 0.0
+        loan_term = 0
 
 # Residential inputs
 with tab_res:
@@ -239,9 +248,22 @@ def calculate_metrics():
     
     # Cash flows
     net_cash_flows = np.zeros(project_years + 1)
-    net_cash_flows[0] = -total_capex + total_incentives  # Initial year: investment and incentives
-    for year in range(1, project_years + 1):
-        net_cash_flows[year] = res_revenue[year] + com_revenue[year] - res_opex[year] - com_opex[year]
+    net_cash_flows[0] = -total_capex + total_incentives  # Initial investment and incentives
+    
+    if enable_debt:
+        # Add loan proceeds to initial cash flow
+        loan_amount, annual_debt_payment = calculate_debt_metrics(total_capex, debt_ratio, loan_interest, loan_term)
+        net_cash_flows[0] += loan_amount
+        
+        # Subtract debt service payments for loan term years
+        for year in range(1, project_years + 1):
+            net_cash_flows[year] = res_revenue[year] + com_revenue[year] - res_opex[year] - com_opex[year]
+            if year <= loan_term:
+                net_cash_flows[year] -= annual_debt_payment
+    else:
+        # Without debt financing, just use operational cash flows
+        for year in range(1, project_years + 1):
+            net_cash_flows[year] = res_revenue[year] + com_revenue[year] - res_opex[year] - com_opex[year]
     
     # Calculate metrics
     npv = calculate_npv(discount_rate, net_cash_flows)
@@ -254,18 +276,14 @@ def calculate_metrics():
     total_annual_energy = res_annual_energy + com_annual_energy
     lcoe = calculate_lcoe(total_capex, res_opex[1] + com_opex[1], total_annual_energy, project_years, discount_rate)
     
-    # Debt metrics
-    loan_amount, annual_debt_payment = calculate_debt_metrics(total_capex, debt_ratio, loan_interest, loan_term)
-    equity_investment = total_capex * (1 - debt_ratio)
-    
     # Operating metrics
     ebitda = res_revenue[1] + com_revenue[1] - res_opex[1] - com_opex[1]  # Year 1 EBITDA
-    debt_service_coverage = ebitda / annual_debt_payment if annual_debt_payment > 0 else float('inf')
     
     # Profitability metrics
     gross_margin = ((res_revenue[1] + com_revenue[1]) - (res_opex[1] + com_opex[1])) / (res_revenue[1] + com_revenue[1]) * 100
     
-    return {
+    # Modify the metrics dictionary to include debt-related metrics only when enabled
+    metrics_dict = {
         'npv': npv,
         'irr': irr,
         'payback': payback,
@@ -279,13 +297,27 @@ def calculate_metrics():
         'res_opex': res_opex,
         'com_opex': com_opex,
         'lcoe': lcoe,
-        'loan_amount': loan_amount,
-        'annual_debt_payment': annual_debt_payment,
-        'equity_investment': equity_investment,
         'ebitda': ebitda,
-        'debt_service_coverage': debt_service_coverage,
         'gross_margin': gross_margin
     }
+    
+    # Add debt metrics only if debt financing is enabled
+    if enable_debt:
+        metrics_dict.update({
+            'loan_amount': loan_amount,
+            'annual_debt_payment': annual_debt_payment,
+            'equity_investment': total_capex * (1 - debt_ratio),
+            'debt_service_coverage': ebitda / annual_debt_payment if annual_debt_payment > 0 else float('inf')
+        })
+    else:
+        metrics_dict.update({
+            'loan_amount': 0,
+            'annual_debt_payment': 0,
+            'equity_investment': total_capex,
+            'debt_service_coverage': float('inf')
+        })
+    
+    return metrics_dict
 
 # Add these functions BEFORE "with tab_results:"
 def create_pdf_report(metrics, cash_flow_df):
@@ -501,14 +533,16 @@ with tab_results:
     with col2:
         st.metric("Equity Investment", f"${metrics['equity_investment']:,.2f}",
                  help="Initial capital required from investors")
-        st.metric("Annual Debt Payment", f"${metrics['annual_debt_payment']:,.2f}",
-                 help="Yearly loan payment (Principal + Interest)")
+        if enable_debt:
+            st.metric("Annual Debt Payment", f"${metrics['annual_debt_payment']:,.2f}",
+                     help="Yearly loan payment (Principal + Interest)")
     
     with col3:
         st.metric("EBITDA (Year 1)", f"${metrics['ebitda']:,.2f}",
                  help="Earnings Before Interest, Taxes, Depreciation, and Amortization")
-        st.metric("Debt Service Coverage", f"{metrics['debt_service_coverage']:.2f}x",
-                 help="EBITDA / Annual Debt Payment - measures ability to service debt")
+        if enable_debt:
+            st.metric("Debt Service Coverage", f"{metrics['debt_service_coverage']:.2f}x",
+                     help="EBITDA / Annual Debt Payment - measures ability to service debt")
     
     # Export section
     st.header("Export Options")
@@ -532,3 +566,4 @@ with tab_results:
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         )
     
+
