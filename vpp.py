@@ -1,8 +1,6 @@
 import streamlit as st
 import numpy as np
 import pandas as pd
-import plotly.graph_objects as go
-from plotly.subplots import make_subplots
 from fpdf import FPDF
 import base64
 from io import BytesIO
@@ -451,43 +449,35 @@ with tab_results:
         st.metric("Annual Revenue (Year 1)", f"${metrics['annual_revenue']:,.2f}",
                  help="Total revenue from all sources in first year")
     
-    # Cash flow chart
+    # Cash flow charts using Streamlit
     st.subheader("Cash Flow Analysis")
     
-    fig = make_subplots(rows=2, cols=1, subplot_titles=('Annual Cash Flows', 'Cumulative Cash Flow'))
-    
     # Annual cash flows
-    fig.add_trace(
-        go.Bar(name='Cash Flow', x=np.arange(project_years + 1), y=metrics['cash_flows']),
-        row=1, col=1
+    years = np.arange(project_years + 1)
+    st.bar_chart(
+        pd.DataFrame({
+            'Annual Cash Flow': metrics['cash_flows']
+        }, index=years)
     )
     
     # Cumulative cash flow
-    fig.add_trace(
-        go.Scatter(name='Cumulative', x=np.arange(project_years + 1), 
-                  y=np.cumsum(metrics['cash_flows']), mode='lines'),
-        row=2, col=1
+    st.line_chart(
+        pd.DataFrame({
+            'Cumulative Cash Flow': np.cumsum(metrics['cash_flows'])
+        }, index=years)
     )
-    
-    fig.update_layout(height=800)
-    st.plotly_chart(fig, use_container_width=True)
     
     # Revenue breakdown
     st.subheader("Revenue and Cost Breakdown")
     
-    # Create revenue breakdown chart
-    fig2 = go.Figure()
-    fig2.add_trace(go.Bar(name='Residential Revenue', x=np.arange(project_years + 1), 
-                         y=metrics['res_revenue']))
-    fig2.add_trace(go.Bar(name='Commercial Revenue', x=np.arange(project_years + 1), 
-                         y=metrics['com_revenue']))
-    fig2.add_trace(go.Bar(name='Residential OpEx', x=np.arange(project_years + 1), 
-                         y=-metrics['res_opex']))
-    fig2.add_trace(go.Bar(name='Commercial OpEx', x=np.arange(project_years + 1), 
-                         y=-metrics['com_opex']))
+    revenue_df = pd.DataFrame({
+        'Residential Revenue': metrics['res_revenue'],
+        'Commercial Revenue': metrics['com_revenue'],
+        'Residential OpEx': -metrics['res_opex'],
+        'Commercial OpEx': -metrics['com_opex']
+    }, index=years)
     
-    fig2.update_layout(barmode='relative', title='Revenue and Cost Breakdown by Year')
-    st.plotly_chart(fig2, use_container_width=True)
+    st.area_chart(revenue_df)
     
     # Detailed cash flow table
     st.subheader("Detailed Cash Flow Table")
@@ -504,24 +494,41 @@ with tab_results:
     
     st.dataframe(cash_flow_df.style.format("${:,.2f}"))
     
-    # New visualizations section
-    st.header("Detailed Analysis")
-    
     # Revenue Components Analysis
     st.subheader("Revenue Components Analysis")
-    fig_revenue = go.Figure()
     
-    # Add revenue component traces
-    res_energy_revenue = metrics['res_revenue'] * 0.7
-    res_grid_revenue = metrics['res_revenue'] * 0.3
-    com_energy_revenue = metrics['com_revenue'] * 0.5
-    com_demand_revenue = metrics['com_revenue'] * 0.3
-    com_grid_revenue = metrics['com_revenue'] * 0.2
+    # Calculate revenue components
+    revenue_components = pd.DataFrame({
+        'Res - Energy Arbitrage': metrics['res_revenue'] * 0.7,
+        'Res - Grid Services': metrics['res_revenue'] * 0.3,
+        'Com - Energy Arbitrage': metrics['com_revenue'] * 0.5,
+        'Com - Demand Charges': metrics['com_revenue'] * 0.3,
+        'Com - Grid Services': metrics['com_revenue'] * 0.2
+    }, index=years)
     
-    fig_revenue.add_trace(go.Bar(name='Res - Energy Arbitrage', x=np.arange(project_years + 1), y=res_energy_revenue))
-    # ... add other revenue traces ...
+    st.area_chart(revenue_components)
+
+        # Add new metrics section after existing metrics
+    st.subheader("Additional Financial Metrics")
+    col1, col2, col3 = st.columns(3)
     
-    st.plotly_chart(fig_revenue, use_container_width=True)
+    with col1:
+        st.metric("LCOE", f"${metrics['lcoe']:.4f}/kWh" if metrics['lcoe'] else "N/A",
+                 help="Levelized Cost of Energy Storage - total cost per kWh delivered over project lifetime")
+        st.metric("Gross Margin", f"{metrics['gross_margin']:.1f}%",
+                 help="(Revenue - OpEx) / Revenue × 100")
+    
+    with col2:
+        st.metric("Equity Investment", f"${metrics['equity_investment']:,.2f}",
+                 help="Initial capital required from investors")
+        st.metric("Annual Debt Payment", f"${metrics['annual_debt_payment']:,.2f}",
+                 help="Yearly loan payment (Principal + Interest)")
+    
+    with col3:
+        st.metric("EBITDA (Year 1)", f"${metrics['ebitda']:,.2f}",
+                 help="Earnings Before Interest, Taxes, Depreciation, and Amortization")
+        st.metric("Debt Service Coverage", f"{metrics['debt_service_coverage']:.2f}x",
+                 help="EBITDA / Annual Debt Payment - measures ability to service debt")
     
     # Export section
     st.header("Export Options")
@@ -546,24 +553,3 @@ with tab_results:
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         )
     
-    # Add new metrics section after existing metrics
-    st.subheader("Additional Financial Metrics")
-    col1, col2, col3 = st.columns(3)
-    
-    with col1:
-        st.metric("LCOE", f"${metrics['lcoe']:.4f}/kWh" if metrics['lcoe'] else "N/A",
-                 help="Levelized Cost of Energy Storage - total cost per kWh delivered over project lifetime")
-        st.metric("Gross Margin", f"{metrics['gross_margin']:.1f}%",
-                 help="(Revenue - OpEx) / Revenue × 100")
-    
-    with col2:
-        st.metric("Equity Investment", f"${metrics['equity_investment']:,.2f}",
-                 help="Initial capital required from investors")
-        st.metric("Annual Debt Payment", f"${metrics['annual_debt_payment']:,.2f}",
-                 help="Yearly loan payment (Principal + Interest)")
-    
-    with col3:
-        st.metric("EBITDA (Year 1)", f"${metrics['ebitda']:,.2f}",
-                 help="Earnings Before Interest, Taxes, Depreciation, and Amortization")
-        st.metric("Debt Service Coverage", f"{metrics['debt_service_coverage']:.2f}x",
-                 help="EBITDA / Annual Debt Payment - measures ability to service debt")
