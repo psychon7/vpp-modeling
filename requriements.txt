@@ -1,6 +1,6 @@
 streamlit
 numpy
 pandas
-plotly
+plotly>=5.0.0
 fpdf
 numpy-financial
